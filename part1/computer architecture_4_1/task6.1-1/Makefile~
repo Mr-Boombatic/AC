@@ -1,0 +1,7 @@
+task6-exe-S: func.o
+	ld -melf_i386 -o task6-exe-S func.o
+func.o:
+	as -ahlsm=task6.lst --32 -gstabs+ -o func.o func.S
+clean:
+	rm *.o task6-exe-S *.lst
+remake: clean task6-exe-S

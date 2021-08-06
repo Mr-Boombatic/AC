@@ -1,0 +1,69 @@
+.macro Finish
+	movl $1, %eax 		# номер сист. вызова exit
+	movl $0, %ebx 		# код выхода
+	int $0x80 		# выполнить системный вызов
+.endm
+
+.macro Getchar buf_addr
+	movl $3, %eax		# номер сист. вызова read
+	movl $0, %ebx		# параметр 1: дескриптор стандартного ввода
+	movl \buf_addr, %ecx	# параметр 2: адрес буфера (он же - фактический 
+	     			# параметр макровызова)
+	movl $1, %edx		# параметр 3: количество байтов для чтения
+	int $0x80		# выполнить системный вызов
+.endm
+
+.macro PutStr string
+.data
+    str\@: 	.ascii "\string"
+	
+    strlen\@ = 	. - str\@
+
+.text
+	movl $4, %eax
+	movl $1, %ebx	
+	movl $str\@, %ecx
+	movl $strlen\@, %edx
+	int $0x80
+.endm
+
+.macro PutInt integer
+.data
+	ten\@:	.long 10
+.text
+	movl \integer, %eax
+	xorl %esi, %esi
+	cmpl $0, %eax
+	jge loop\@
+	neg %eax
+loop\@:
+	movl $0, %edx
+	divl ten\@
+	addl $'0', %edx
+	pushl %edx
+
+	incl %esi
+	cmpl $0, %eax
+	jz next\@
+	jmp loop\@
+next\@:
+	cmpl $0, %esi
+	jz quit\@
+	decl %esi
+	movl $4, %eax
+	movl %esp, %ecx
+	movl $1, %ebx
+	movl $1, %edx
+	int $0x80
+	addl $4, %esp
+	jmp next\@
+quit\@:
+.endm
+
+.macro Len string
+.data
+    	str\@: 	.ascii "\string"
+   	strlen\@ = 	. - str\@
+.text
+	movl $strlen\@, %eax
+.endm

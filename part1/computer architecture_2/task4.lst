@@ -1,0 +1,310 @@
+GAS LISTING task4.s 			page 1
+
+
+   1              	
+   2              	
+   3              	.include "my-macro"
+   1              	.macro Exit ret_val
+   2              		movl $1, %eax 		# номер сист. вызова exit
+   3              		movl \ret_val, %ebx 	# код выхода
+   4              		int $0x80 		# выполнить системный вызов
+   5              	.endm
+   6              	
+   7              	.macro Put_number a
+   8              		movl $4, %eax # номер сист. вызова write
+   9              		movl $1, %ebx # параметр 1: дескриптор стандартного вывода
+  10              		movl \a, %ecx # параметр 2: адрес символа для вывода
+  11              		movl $1, %edx # параметр 3: количество байтов для вывода
+  12              		int $0x80 # выполнить системный вызов
+  13              	.endm
+  14              	
+  15              	.macro Getchar buf_addr
+  16              		movl $3, %eax		# номер сист. вызова read
+  17              		movl $0, %ebx		# параметр 1: дескриптор стандартного ввода
+  18              		movl \buf_addr, %ecx	# параметр 2: адрес буфера (он же - фактическ
+  19              		     			# параметр макровызова)
+  20              		movl $1, %edx		# параметр 3: количество байтов для чтения
+  21              		int $0x80		# выполнить системный вызов
+  22              	.endm
+  23              	
+  24              	.macro Puts string
+  25              	.data
+  26              	    str\@: 	.ascii "\string\n"  # формирование фактической строки дл
+  27              		
+  28              	    strlen\@ = 	. - str\@           # получение значения длины строки
+  29              	
+  30              	.text
+  31              		movl $4, %eax		# номер сист. вызова write
+  32              		movl $1, %ebx		# параметр 1: дескриптор стандартного вывода	
+  33              		movl $str\@, %ecx	# параметр 2: адрес памяти с выводимыми симво
+  34              		movl $strlen\@, %edx 	# параметр 3: количество байтов для вывода
+  35              		int $0x80		# выполнить системный вызов
+  36              	.endm
+  37              	
+   4              	
+   5              	.bss
+   6              		.lcomm n, 1 
+   7              		.lcomm buf, 15
+   8              	
+   9              	.data
+  10 0000 0000     		t: .short 0
+  11 0002 0A00     		ten: .short 10
+  12 0004 0000     		sum: .short 0
+  13 0006 00       		a: .byte 0
+  14 0007 00       		c: .byte 0
+  15              	.text
+  16              	.global _start 
+  17              	
+  18              	_start:
+  19 0000 29C0     		subl %eax, %eax
+  20 0002 29F6     		subl %esi, %esi
+GAS LISTING task4.s 			page 2
+
+
+  21              	show_prompt:
+  22              		Puts "Вводитее цифры"
+  22              	> .data
+  22 0008 D092D0B2 	>  str0:.ascii "Вводитее цифры\n"
+  22      D0BED0B4 
+  22      D0B8D182 
+  22      D0B5D0B5 
+  22      20D186D0 
+  22              	>  
+  22              	>  strlen0 =. - str0
+  22              	> 
+  22              	> .text
+  22 0004 B8040000 	>  movl $4,%eax
+  22      00
+  22 0009 BB010000 	>  movl $1,%ebx
+  22      00
+  22 000e B9080000 	>  movl $str0,%ecx
+  22      00
+  22 0013 BA1C0000 	>  movl $strlen0,%edx
+  22      00
+  22 0018 CD80     	>  int $0x80
+  23              	kbd_input:
+  24              		Getchar $n
+  24 001a B8030000 	>  movl $3,%eax
+  24      00
+  24 001f BB000000 	>  movl $0,%ebx
+  24      00
+  24 0024 B9000000 	>  movl $n,%ecx
+  24      00
+  24              	>  
+  24 0029 BA010000 	>  movl $1,%edx
+  24      00
+  24 002e CD80     	>  int $0x80
+  25 0030 83F800   		cmpl $0,%eax
+  26 0033 743B     		je nextdigit
+  27 0035 803D0000 		cmpb $'\n', n
+  27      00000A
+  28 003c 7420     		je re
+  29 003e 803D0000 		cmpb $'9', n
+  29      000039
+  30 0045 77D3     		ja kbd_input
+  31 0047 803D0000 		cmpb $'0', n 
+  31      000030
+  32 004e 72CA     		jb kbd_input
+  33 0050 8A1D0000 		movb n,%bl
+  33      0000
+  34 0056 881D0700 		movb %bl,c
+  34      0000
+  35 005c EBBC     		jmp kbd_input
+  36              	re:
+  37 005e A0070000 		movb c, %al 
+  37      00
+  38 0063 2C30     		subb $48, %al  
+  39 0065 66010504 		addw %ax, sum
+  39      000000
+  40 006c 7274     		jc stop_2
+  41 006e EBAA     		jmp kbd_input
+GAS LISTING task4.s 			page 3
+
+
+  42              	nextdigit:
+  43 0070 66A10400 		movw sum,%ax
+  43      0000
+  44              	nextdigit_1:
+  45 0076 66BA0000 		movw $0, %dx
+  46 007a 6683F800 		cmpw $0, %ax
+  47 007e 7415     		je put_symbol 
+  48 0080 66F73502 		divw ten
+  48      000000
+  49 0087 6683C230 		addw $48, %dx 
+  50 008b 66899608 		movw %dx, buf(%esi)
+  50      000000
+  51 0092 46       		incl %esi
+  52 0093 EBE1     		jmp nextdigit_1
+  53              	put_symbol:
+  54 0095 4E       		decl %esi
+  55              	put:
+  56 0096 8BBE0800 		movl buf(%esi), %edi
+  56      0000
+  57 009c 893D0600 		movl %edi, a
+  57      0000
+  58              		Put_number $a 
+  58 00a2 B8040000 	>  movl $4,%eax
+  58      00
+  58 00a7 BB010000 	>  movl $1,%ebx
+  58      00
+  58 00ac B9060000 	>  movl $a,%ecx
+  58      00
+  58 00b1 BA010000 	>  movl $1,%edx
+  58      00
+  58 00b6 CD80     	>  int $0x80
+  59 00b8 4E       		decl %esi
+  60 00b9 83FE00   		cmpl $0, %esi  
+  61 00bc 7DD8     		jge put 
+  62              		Puts ""
+  62              	> .data
+  62 0024 0A       	>  str3:.ascii "\n"
+  62              	>  
+  62              	>  strlen3 =. - str3
+  62              	> 
+  62              	> .text
+  62 00be B8040000 	>  movl $4,%eax
+  62      00
+  62 00c3 BB010000 	>  movl $1,%ebx
+  62      00
+  62 00c8 B9240000 	>  movl $str3,%ecx
+  62      00
+  62 00cd BA010000 	>  movl $strlen3,%edx
+  62      00
+  62 00d2 CD80     	>  int $0x80
+  63 00d4 EB59     		jmp s_1
+  64              	stop:
+  65              		Exit $0
+  65 00d6 B8010000 	>  movl $1,%eax
+  65      00
+  65 00db BB000000 	>  movl $0,%ebx
+  65      00
+GAS LISTING task4.s 			page 4
+
+
+  65 00e0 CD80     	>  int $0x80
+  66              	stop_2:
+  67              		Puts "Переполнение "
+  67              	> .data
+  67 0025 D09FD0B5 	>  str5:.ascii "Переполнение \n"
+  67      D180D0B5 
+  67      D0BFD0BE 
+  67      D0BBD0BD 
+  67      D0B5D0BD 
+  67              	>  
+  67              	>  strlen5 =. - str5
+  67              	> 
+  67              	> .text
+  67 00e2 B8040000 	>  movl $4,%eax
+  67      00
+  67 00e7 BB010000 	>  movl $1,%ebx
+  67      00
+  67 00ec B9250000 	>  movl $str5,%ecx
+  67      00
+  67 00f1 BA1A0000 	>  movl $strlen5,%edx
+  67      00
+  67 00f6 CD80     	>  int $0x80
+  68              		Exit $0
+  68 00f8 B8010000 	>  movl $1,%eax
+  68      00
+  68 00fd BB000000 	>  movl $0,%ebx
+  68      00
+  68 0102 CD80     	>  int $0x80
+  69              	s_2:
+  70 0104 66C70502 		movw $8,ten
+  70      00000008 
+  70      00
+  71              		Puts "Вывод в восьмеричной системе"
+  71              	> .data
+  71 003f D092D18B 	>  str7:.ascii "Вывод в восьмеричной системе\n"
+  71      D0B2D0BE 
+  71      D0B420D0 
+  71      B220D0B2 
+  71      D0BED181 
+  71              	>  
+  71              	>  strlen7 =. - str7
+  71              	> 
+  71              	> .text
+  71 010d B8040000 	>  movl $4,%eax
+  71      00
+  71 0112 BB010000 	>  movl $1,%ebx
+  71      00
+  71 0117 B93F0000 	>  movl $str7,%ecx
+  71      00
+  71 011c BA360000 	>  movl $strlen7,%edx
+  71      00
+  71 0121 CD80     	>  int $0x80
+  72 0123 80050000 		addb $1,t
+  72      000001
+  73 012a E941FFFF 		jmp nextdigit
+  73      FF
+  74              	s_1:
+GAS LISTING task4.s 			page 5
+
+
+  75 012f 803D0000 		cmpb $1,t
+  75      000001
+  76 0136 749E     		je stop
+  77 0138 66833D02 		cmpw $2,ten
+  77      00000002 
+  78 0140 74C2     		je s_2
+  79 0142 66C70502 		movw $2,ten
+  79      00000002 
+  79      00
+  80              		Puts "Вывод в двоичной системе"
+  80              	> .data
+  80 0075 D092D18B 	>  str8:.ascii "Вывод в двоичной системе\n"
+  80      D0B2D0BE 
+  80      D0B420D0 
+  80      B220D0B4 
+  80      D0B2D0BE 
+  80              	>  
+  80              	>  strlen8 =. - str8
+  80              	> 
+  80              	> .text
+  80 014b B8040000 	>  movl $4,%eax
+  80      00
+  80 0150 BB010000 	>  movl $1,%ebx
+  80      00
+  80 0155 B9750000 	>  movl $str8,%ecx
+  80      00
+  80 015a BA2E0000 	>  movl $strlen8,%edx
+  80      00
+  80 015f CD80     	>  int $0x80
+  81 0161 E90AFFFF 		jmp nextdigit
+  81      FF
+  82              		
+GAS LISTING task4.s 			page 6
+
+
+DEFINED SYMBOLS
+                             .bss:0000000000000000 n
+             task4.s:7      .bss:0000000000000008 buf
+             task4.s:10     .data:0000000000000000 t
+             task4.s:11     .data:0000000000000002 ten
+             task4.s:12     .data:0000000000000004 sum
+             task4.s:13     .data:0000000000000006 a
+             task4.s:14     .data:0000000000000007 c
+             task4.s:18     .text:0000000000000000 _start
+             task4.s:21     .text:0000000000000004 show_prompt
+             task4.s:22     .data:0000000000000008 str0
+             task4.s:22     *ABS*:000000000000001c strlen0
+             task4.s:23     .text:000000000000001a kbd_input
+             task4.s:42     .text:0000000000000070 nextdigit
+             task4.s:36     .text:000000000000005e re
+             task4.s:66     .text:00000000000000e2 stop_2
+             task4.s:44     .text:0000000000000076 nextdigit_1
+             task4.s:53     .text:0000000000000095 put_symbol
+             task4.s:55     .text:0000000000000096 put
+             task4.s:62     .data:0000000000000024 str3
+             task4.s:62     *ABS*:0000000000000001 strlen3
+             task4.s:74     .text:000000000000012f s_1
+             task4.s:64     .text:00000000000000d6 stop
+             task4.s:67     .data:0000000000000025 str5
+             task4.s:67     *ABS*:000000000000001a strlen5
+             task4.s:69     .text:0000000000000104 s_2
+             task4.s:71     .data:000000000000003f str7
+             task4.s:71     *ABS*:0000000000000036 strlen7
+             task4.s:80     .data:0000000000000075 str8
+             task4.s:80     *ABS*:000000000000002e strlen8
+
+NO UNDEFINED SYMBOLS
